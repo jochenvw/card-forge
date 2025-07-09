@@ -95,7 +95,9 @@ def test_image_composer():
         
         card = composer.create_card(tmp_path, profile_data, summary_text)
         
-        assert card.size == (400, 300), f"Card size mismatch: {card.size}"
+        # Account for shadow padding (8px on each side)
+        expected_size = (400 + 16, 300 + 16)  # (416, 316)
+        assert card.size == expected_size, f"Card size mismatch: {card.size}"
         print("✅ Image Composer tests passed")
         
     finally:
@@ -137,7 +139,9 @@ def test_full_pipeline():
     
     # Create card
     card = composer.create_card(example_image, profile_data, summary_text)
-    assert card.size == (800, 600)
+    # Account for shadow padding (8px on each side)
+    expected_size = (800 + 16, 600 + 16)  # (816, 616)
+    assert card.size == expected_size, f"Card size mismatch: {card.size}"
     
     print("✅ Full pipeline tests passed")
 
