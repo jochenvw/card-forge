@@ -11,23 +11,71 @@ Use it to create professional talent snapshots, dynamic team rosters, or persona
 ### Prerequisites
 
 - Python 3.10+
-- pip
+- Package manager: `uv` (recommended) or `pip`
+
+> **Why uv?** uv is a fast, modern Python package installer that's 10-100x faster than pip. It provides better dependency resolution, automatic virtual environment management, and works seamlessly with both requirements.txt and pyproject.toml files.
 
 ### Installation
+
+#### Option 1: Using uv (Recommended - Fast & Modern)
+
+```bash
+# Install uv if you haven't already
+curl -LsSf https://astral.sh/uv/install.sh | sh
+# Or on Windows: powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+# Or with pip: pip install uv
+
+# Clone the repository
+git clone https://github.com/jochenvw/card-forge.git
+cd card-forge
+
+# Install dependencies with uv (creates virtual environment automatically)
+uv sync
+
+# Activate the uv-managed virtual environment (if needed)
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Run commands in the uv environment without activating
+uv run python generate_card.py --help
+```
+
+#### Option 2: Using pip (Traditional)
 
 ```bash
 # Clone the repository
 git clone https://github.com/jochenvw/card-forge.git
 cd card-forge
 
+# Create virtual environment (recommended)
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
 # Install dependencies
 pip install -r requirements.txt
+```
+
+#### Option 3: Install as Package with uv
+
+```bash
+# Install directly from git
+uv pip install git+https://github.com/jochenvw/card-forge.git
+
+# Or install in development mode after cloning
+git clone https://github.com/jochenvw/card-forge.git
+cd card-forge
+uv pip install -e .
 ```
 
 ### Basic Usage
 
 Generate a profile card with the simple command:
 
+**With uv:**
+```bash
+uv run python generate_card.py --image input_photo.png --markdown profile.md --output output_card.png
+```
+
+**With pip/traditional Python:**
 ```bash
 python generate_card.py --image input_photo.png --markdown profile.md --output output_card.png
 ```
@@ -36,6 +84,12 @@ python generate_card.py --image input_photo.png --markdown profile.md --output o
 
 Try the included example:
 
+**With uv:**
+```bash
+uv run python generate_card.py --image examples/input_photo.png --markdown examples/profile.md --output my_card.png
+```
+
+**With pip/traditional Python:**
 ```bash
 python generate_card.py --image examples/input_photo.png --markdown examples/profile.md --output my_card.png
 ```
@@ -49,9 +103,18 @@ This will generate a profile card combining:
 
 ## 📋 Command Line Options
 
+**With uv:**
+```bash
+uv run python generate_card.py [OPTIONS]
+```
+
+**With pip/traditional Python:**
 ```bash
 python generate_card.py [OPTIONS]
+```
 
+**Options:**
+```
 Required:
   --image, -i PATH      Input image file (PNG recommended)
   --markdown, -m PATH   Markdown profile file
@@ -125,6 +188,12 @@ CardForge uses local AI models to:
 
 Run the test suite to verify everything works:
 
+**With uv:**
+```bash
+uv run python test_pipeline.py
+```
+
+**With pip/traditional Python:**
 ```bash
 python test_pipeline.py
 ```
@@ -143,7 +212,40 @@ card-forge/
 │   ├── llm_processor.py      # AI text processing
 │   └── image_composer.py     # Card image generation
 ├── examples/                 # Sample input files
-└── output/                   # Generated cards
+├── output/                   # Generated cards
+├── pyproject.toml            # Modern Python project configuration (uv compatible)
+├── requirements.txt          # Legacy pip requirements
+├── .python-version           # Python version specification for uv
+└── test_pipeline.py          # Test suite
+```
+
+### Development Setup
+
+**With uv (Recommended):**
+```bash
+# Clone and setup development environment
+git clone https://github.com/jochenvw/card-forge.git
+cd card-forge
+
+# Install with development dependencies
+uv sync --extra dev
+
+# Run tests
+uv run python test_pipeline.py
+
+# Format code (if dev dependencies installed)
+uv run black .
+uv run flake8 .
+```
+
+**With pip (Traditional):**
+```bash
+git clone https://github.com/jochenvw/card-forge.git
+cd card-forge
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+pip install -r requirements.txt
+pip install -e .
 ```
 
 ### Adding New Features
