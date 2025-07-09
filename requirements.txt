@@ -1,0 +1,13 @@
+# Core dependencies for CardForge MVP
+torch>=2.0.0
+transformers>=4.30.0
+accelerate>=0.20.0
+Pillow>=10.0.0
+markdown>=3.4.0
+weasyprint>=59.0
+
+# CLI and utilities
+argparse
+
+# Optional: for better GPU support
+# Install with: pip install torch --index-url https://download.pytorch.org/whl/cu118
