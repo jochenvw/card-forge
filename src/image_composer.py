@@ -27,10 +27,12 @@ class ImageComposer:
         self.section_spacing = 15
         
         # Colors
-        self.bg_color = (245, 245, 245)  # Light gray
-        self.title_bg_color = (70, 130, 180)  # Steel blue
-        self.text_color = (51, 51, 51)  # Dark gray
+        self.bg_color = (248, 249, 250)  # Very light gray
+        self.title_bg_color = (33, 37, 41)  # Dark gray/black
+        self.text_color = (33, 37, 41)  # Dark gray
         self.title_text_color = (255, 255, 255)  # White
+        self.accent_color = (0, 123, 255)  # Blue accent
+        self.section_bg_color = (255, 255, 255)  # White for sections
         
         # Try to load fonts
         self.title_font = self._load_font(size=24, bold=True)
@@ -115,7 +117,13 @@ class ImageComposer:
         text_width = self.card_width - text_x - self.margin
         text_height = self.card_height - text_y - self.margin
         
-        # Add summary text
+        # Add summary text with background
+        summary_bg_y = text_y - 5
+        summary_bg_height = 140
+        draw.rectangle([text_x - 10, summary_bg_y, self.card_width - self.margin, 
+                       summary_bg_y + summary_bg_height], 
+                      fill=self.section_bg_color, outline=self.accent_color, width=1)
+        
         self._draw_text_section(draw, "AI Summary", summary_text, 
                               text_x, text_y, text_width)
         

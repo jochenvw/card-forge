@@ -7,6 +7,7 @@ import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 from typing import Optional, Dict, Any
 import logging
+import re
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -158,20 +159,56 @@ Summary:
         
         # Look for bullet points or key information
         bullets = []
+        current_section = ""
+        
         for line in lines:
-            if line.startswith('-') or line.startswith('*') or ':' in line:
+            # Check if this is a section header
+            if ':' in line and not line.startswith('-') and not line.startswith('*'):
+                current_section = line.split(':')[0].strip()
+                continue
+            
+            # Process bullet points
+            if line.startswith('-') or line.startswith('*'):
                 # Clean and extract key info
                 clean_line = line.lstrip('- *').strip()
+                # Remove markdown formatting
+                clean_line = re.sub(r'\*\*(.+?)\*\*', r'\1', clean_line)  # Remove bold
+                clean_line = re.sub(r'\*(.+?)\*', r'\1', clean_line)      # Remove italic
+                
                 if len(clean_line) > 10:  # Filter out very short lines
-                    bullets.append(f"• {clean_line}")
+                    # Extract key skill/achievement
+                    if ':' in clean_line:
+                        skill_part = clean_line.split(':')[0].strip()
+                        bullets.append(f"• {skill_part}")
+                    else:
+                        bullets.append(f"• {clean_line}")
         
-        # If no bullets found, extract sentences
+        # If no bullets found, extract key sentences from text
         if not bullets:
-            sentences = [s.strip() for s in text.replace('\n', ' ').split('.') if len(s.strip()) > 20]
-            bullets = [f"• {s}." for s in sentences[:max_bullets]]
+            # Look for key competencies, skills, aspirations
+            for line in lines:
+                if any(keyword in line.lower() for keyword in ['expert', 'experience', 'proficiency', 'leading', 'building']):
+                    clean_line = line.strip().replace('- ', '').replace('* ', '')
+                    if len(clean_line) > 10:
+                        bullets.append(f"• {clean_line}")
         
-        # Limit to max_bullets
-        return '\n'.join(bullets[:max_bullets])
+        # If still no bullets, fall back to first few meaningful lines
+        if not bullets:
+            sentences = []
+            for line in lines:
+                if len(line) > 20 and not line.startswith('#'):
+                    sentences.append(line)
+            bullets = [f"• {s}" for s in sentences[:max_bullets]]
+        
+        # Limit to max_bullets and ensure unique
+        unique_bullets = []
+        seen = set()
+        for bullet in bullets:
+            if bullet not in seen and len(unique_bullets) < max_bullets:
+                unique_bullets.append(bullet)
+                seen.add(bullet)
+        
+        return '\n'.join(unique_bullets)
     
     def _clean_summary(self, summary: str) -> str:
         """Clean up generated summary text."""
