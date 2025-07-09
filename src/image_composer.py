@@ -22,23 +22,27 @@ class ImageComposer:
         """
         self.card_width = card_width
         self.card_height = card_height
-        self.headshot_size = (200, 200)
-        self.margin = 20
-        self.section_spacing = 15
+        self.headshot_size = (180, 180)  # Slightly smaller for better proportions
+        self.margin = 30  # Increased margin for modern spacing
+        self.section_spacing = 20  # More spacing between sections
+        self.corner_radius = 15  # Rounded corners
         
-        # Colors
-        self.bg_color = (248, 249, 250)  # Very light gray
-        self.title_bg_color = (33, 37, 41)  # Dark gray/black
-        self.text_color = (33, 37, 41)  # Dark gray
+        # Modern color palette
+        self.bg_color = (255, 255, 255)  # Clean white background
+        self.card_bg_color = (250, 251, 252)  # Very subtle gray for card
+        self.title_bg_color = (52, 73, 93)  # Modern dark blue-gray
+        self.text_color = (44, 62, 80)  # Softer dark gray
         self.title_text_color = (255, 255, 255)  # White
-        self.accent_color = (0, 123, 255)  # Blue accent
+        self.accent_color = (46, 204, 113)  # Modern green accent
         self.section_bg_color = (255, 255, 255)  # White for sections
+        self.border_color = (236, 240, 241)  # Light border
+        self.shadow_color = (149, 165, 166, 40)  # Subtle shadow with alpha
         
-        # Try to load fonts
-        self.title_font = self._load_font(size=24, bold=True)
-        self.heading_font = self._load_font(size=16, bold=True)
-        self.body_font = self._load_font(size=12)
-        self.small_font = self._load_font(size=10)
+        # Try to load fonts with improved hierarchy
+        self.title_font = self._load_font(size=26, bold=True)  # Slightly larger
+        self.heading_font = self._load_font(size=18, bold=True)  # More prominent
+        self.body_font = self._load_font(size=13)  # Slightly larger for readability
+        self.small_font = self._load_font(size=11)
     
     def _load_font(self, size: int, bold: bool = False) -> ImageFont.ImageFont:
         """Load a font with fallback to default."""
@@ -61,6 +65,22 @@ class ImageComposer:
         except:
             return ImageFont.load_default()
     
+    def _create_rounded_rectangle_mask(self, size: Tuple[int, int], radius: int) -> Image.Image:
+        """Create a rounded rectangle mask."""
+        mask = Image.new('L', size, 0)
+        draw = ImageDraw.Draw(mask)
+        
+        # Draw rounded rectangle by drawing four rounded corners and connecting rectangles
+        x, y = size
+        draw.rounded_rectangle([0, 0, x, y], radius=radius, fill=255)
+        
+        return mask
+    
+    def _create_rounded_rectangle(self, draw: ImageDraw.Draw, bounds: list, radius: int, 
+                                fill=None, outline=None, width=1):
+        """Draw a rounded rectangle."""
+        draw.rounded_rectangle(bounds, radius=radius, fill=fill, outline=outline, width=width)
+    
     def create_card(self, 
                    image_path: str, 
                    profile_data: Dict[str, Any], 
@@ -76,64 +96,114 @@ class ImageComposer:
         Returns:
             PIL Image object of the composed card
         """
-        # Create base card
-        card = Image.new('RGB', (self.card_width, self.card_height), self.bg_color)
-        draw = ImageDraw.Draw(card)
+        # Create base canvas with padding for shadow effect
+        shadow_offset = 8
+        canvas_width = self.card_width + shadow_offset * 2
+        canvas_height = self.card_height + shadow_offset * 2
+        canvas = Image.new('RGBA', (canvas_width, canvas_height), (255, 255, 255, 0))
         
-        # Draw title bar
-        title_height = 60
-        draw.rectangle([0, 0, self.card_width, title_height], fill=self.title_bg_color)
+        # Create the main card with rounded corners
+        card = Image.new('RGBA', (self.card_width, self.card_height), self.card_bg_color + (255,))
+        card_draw = ImageDraw.Draw(card)
         
-        # Add title text
+        # Add subtle shadow effect
+        shadow = Image.new('RGBA', (self.card_width, self.card_height), (0, 0, 0, 0))
+        shadow_draw = ImageDraw.Draw(shadow)
+        self._create_rounded_rectangle(shadow_draw, [0, 0, self.card_width, self.card_height], 
+                                     self.corner_radius, fill=self.shadow_color)
+        
+        # Create card background with rounded corners
+        self._create_rounded_rectangle(card_draw, [0, 0, self.card_width, self.card_height], 
+                                     self.corner_radius, fill=self.card_bg_color)
+        
+        # Create title bar with rounded top corners
+        title_height = 70  # Slightly taller for better proportions
+        title_rect = [0, 0, self.card_width, title_height]
+        self._create_rounded_rectangle(card_draw, title_rect, self.corner_radius, 
+                                     fill=self.title_bg_color)
+        
+        # Fix the bottom corners of title bar to be square
+        card_draw.rectangle([0, title_height - self.corner_radius, self.card_width, title_height], 
+                           fill=self.title_bg_color)
+        
+        # Add title text with better positioning
         title = profile_data.get('title', 'Professional Profile')
-        title_bbox = draw.textbbox((0, 0), title, font=self.title_font)
+        title_bbox = card_draw.textbbox((0, 0), title, font=self.title_font)
         title_width = title_bbox[2] - title_bbox[0]
         title_x = (self.card_width - title_width) // 2
-        draw.text((title_x, 15), title, fill=self.title_text_color, font=self.title_font)
+        title_y = (title_height - (title_bbox[3] - title_bbox[1])) // 2
+        card_draw.text((title_x, title_y), title, fill=self.title_text_color, font=self.title_font)
         
-        # Load and resize profile image
+        # Load and process profile image with rounded corners
         try:
             profile_img = Image.open(image_path)
             profile_img = self._resize_image(profile_img, self.headshot_size)
             
-            # Paste profile image
+            # Create rounded mask for profile image
+            mask = self._create_rounded_rectangle_mask(self.headshot_size, 20)  # Rounded profile image
+            profile_img.putalpha(mask)
+            
+            # Position profile image with better spacing
             img_x = self.margin
             img_y = title_height + self.margin
-            card.paste(profile_img, (img_x, img_y))
+            
+            # Create a white background circle for the profile image
+            circle_size = (self.headshot_size[0] + 8, self.headshot_size[1] + 8)
+            circle_bg = Image.new('RGBA', circle_size, (255, 255, 255, 255))
+            circle_draw = ImageDraw.Draw(circle_bg)
+            self._create_rounded_rectangle(circle_draw, [0, 0, circle_size[0], circle_size[1]], 
+                                         25, fill=(255, 255, 255), outline=self.border_color, width=2)
+            
+            # Paste the background and then the profile image
+            card.paste(circle_bg, (img_x - 4, img_y - 4), circle_bg)
+            card.paste(profile_img, (img_x, img_y), profile_img)
             
         except Exception as e:
             print(f"Warning: Could not load image {image_path}: {e}")
-            # Draw placeholder rectangle
+            # Draw modern placeholder
             img_x = self.margin
             img_y = title_height + self.margin
-            draw.rectangle([img_x, img_y, img_x + self.headshot_size[0], 
-                          img_y + self.headshot_size[1]], 
-                         fill=(200, 200, 200), outline=(100, 100, 100))
-            draw.text((img_x + 50, img_y + 90), "No Image", fill=self.text_color, font=self.body_font)
+            self._create_rounded_rectangle(card_draw, 
+                                         [img_x, img_y, img_x + self.headshot_size[0], 
+                                          img_y + self.headshot_size[1]], 
+                                         20, fill=self.border_color, outline=self.accent_color, width=2)
+            
+            # Add placeholder text
+            placeholder_text = "No Image"
+            text_bbox = card_draw.textbbox((0, 0), placeholder_text, font=self.body_font)
+            text_x = img_x + (self.headshot_size[0] - (text_bbox[2] - text_bbox[0])) // 2
+            text_y = img_y + (self.headshot_size[1] - (text_bbox[3] - text_bbox[1])) // 2
+            card_draw.text((text_x, text_y), placeholder_text, fill=self.text_color, font=self.body_font)
         
-        # Calculate text area
+        # Calculate text area with improved spacing
         text_x = img_x + self.headshot_size[0] + self.margin
         text_y = title_height + self.margin
         text_width = self.card_width - text_x - self.margin
-        text_height = self.card_height - text_y - self.margin
         
-        # Add summary text with background
-        summary_bg_y = text_y - 5
-        summary_bg_height = 140
-        draw.rectangle([text_x - 10, summary_bg_y, self.card_width - self.margin, 
-                       summary_bg_y + summary_bg_height], 
-                      fill=self.section_bg_color, outline=self.accent_color, width=1)
+        # Add summary section with modern styling
+        summary_bg_y = text_y - 10
+        summary_bg_height = 160  # Increased height
+        self._create_rounded_rectangle(card_draw, 
+                                     [text_x - 15, summary_bg_y, self.card_width - self.margin, 
+                                      summary_bg_y + summary_bg_height], 
+                                     12, fill=self.section_bg_color, outline=self.border_color, width=1)
         
-        self._draw_text_section(draw, "AI Summary", summary_text, 
-                              text_x, text_y, text_width)
+        # Add a colored accent bar on the left of the summary
+        accent_width = 4
+        card_draw.rectangle([text_x - 15, summary_bg_y + 5, text_x - 15 + accent_width, 
+                           summary_bg_y + summary_bg_height - 5], 
+                          fill=self.accent_color)
         
-        # Add additional sections if space allows
-        current_y = text_y + 150  # Approximate height for summary section
+        self._draw_text_section(card_draw, "AI Summary", summary_text, 
+                              text_x, text_y + 5, text_width - 20)
+        
+        # Add additional sections with improved styling
+        current_y = text_y + 180  # Adjusted for new summary height
         
         # Add key sections from profile data
         sections_to_show = ['about', 'key_competencies', 'current_aspirations']
         for section_key in sections_to_show:
-            if section_key in profile_data and current_y < self.card_height - 80:
+            if section_key in profile_data and current_y < self.card_height - 100:
                 section_title = section_key.replace('_', ' ').title()
                 section_content = profile_data[section_key]
                 
@@ -141,13 +211,29 @@ class ImageComposer:
                 if len(section_content) > 200:
                     section_content = section_content[:200] + "..."
                 
-                section_height = self._draw_text_section(
-                    draw, section_title, section_content,
-                    text_x, current_y, text_width, max_lines=3
+                # Create section background
+                section_height = 80  # Fixed height for consistency
+                section_bg_y = current_y - 10
+                self._create_rounded_rectangle(card_draw, 
+                                             [text_x - 15, section_bg_y, self.card_width - self.margin, 
+                                              section_bg_y + section_height], 
+                                             8, fill=self.section_bg_color, outline=self.border_color, width=1)
+                
+                section_drawn_height = self._draw_text_section(
+                    card_draw, section_title, section_content,
+                    text_x, current_y, text_width - 20, max_lines=3
                 )
                 current_y += section_height + self.section_spacing
         
-        return card
+        # Composite the shadow and card on canvas
+        canvas.paste(shadow, (shadow_offset + 2, shadow_offset + 2), shadow)
+        canvas.paste(card, (shadow_offset, shadow_offset), card)
+        
+        # Convert back to RGB for final output
+        final_card = Image.new('RGB', (canvas_width, canvas_height), self.bg_color)
+        final_card.paste(canvas, (0, 0), canvas)
+        
+        return final_card
     
     def _resize_image(self, img: Image.Image, target_size: Tuple[int, int]) -> Image.Image:
         """Resize image while maintaining aspect ratio."""
@@ -187,17 +273,17 @@ class ImageComposer:
         """
         current_y = y
         
-        # Draw title
-        draw.text((x, current_y), title, fill=self.text_color, font=self.heading_font)
-        current_y += 25
+        # Draw title with improved styling
+        draw.text((x, current_y), title, fill=self.accent_color, font=self.heading_font)
+        current_y += 30  # More space after title
         
-        # Draw content
+        # Draw content with better line spacing
         # Handle bullet points
         if '•' in content:
             lines = content.split('\n')
         else:
-            # Wrap text
-            chars_per_line = width // 8  # Approximate characters per line
+            # Wrap text with better character calculation
+            chars_per_line = width // 9  # More accurate for modern fonts
             lines = textwrap.wrap(content, width=chars_per_line)
         
         # Limit lines if specified
@@ -205,10 +291,13 @@ class ImageComposer:
             lines = lines[:max_lines]
         
         for line in lines:
-            if current_y > self.card_height - 30:  # Stop if near bottom
+            if current_y > self.card_height - 50:  # Better boundary check
                 break
+            # Clean up bullet points for better appearance
+            if line.strip().startswith('•'):
+                line = '  ' + line.strip()  # Add indentation
             draw.text((x, current_y), line, fill=self.text_color, font=self.body_font)
-            current_y += 18
+            current_y += 22  # Improved line spacing
         
         return current_y - y
     
@@ -219,13 +308,17 @@ class ImageComposer:
     
     def get_card_info(self) -> Dict[str, Any]:
         """Get information about card dimensions and settings."""
+        shadow_offset = 8
         return {
-            "card_size": (self.card_width, self.card_height),
+            "card_size": (self.card_width + shadow_offset * 2, self.card_height + shadow_offset * 2),
+            "inner_card_size": (self.card_width, self.card_height),
             "headshot_size": self.headshot_size,
             "colors": {
                 "background": self.bg_color,
+                "card_background": self.card_bg_color,
                 "title_background": self.title_bg_color,
                 "text": self.text_color,
-                "title_text": self.title_text_color
+                "title_text": self.title_text_color,
+                "accent": self.accent_color
             }
         }
